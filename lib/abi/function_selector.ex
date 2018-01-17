@@ -161,6 +161,7 @@ defmodule ABI.FunctionSelector do
   def decode_single_type("bool"), do: :bool
   def decode_single_type("string"), do: :string
   def decode_single_type("address"), do: :address
+  def decode_single_type("bytes32"), do: :bytes32
   def decode_single_type(els) do
     raise "Unsupported type: #{els}"
   end
