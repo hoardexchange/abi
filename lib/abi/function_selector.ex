@@ -199,6 +199,7 @@ defmodule ABI.FunctionSelector do
   defp get_type(:bool), do: "bool"
   defp get_type(:string), do: "string"
   defp get_type(:address), do: "address"
+  defp get_type(:bytes32), do: "bytes32"
   defp get_type({:array, type}), do: "#{get_type(type)}[]"
   defp get_type({:array, type, element_count}), do: "#{get_type(type)}[#{element_count}]"
   defp get_type({:tuple, types}) do
