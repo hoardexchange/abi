@@ -166,6 +166,10 @@ defmodule ABI.TypeEncoder do
     {encode_uint(byte_size(data), 256) <> encode_bytes(data), rest}
   end
 
+  defp encode_type(:bytes32, [data|rest]) do
+    {encode_bytes(data), rest}
+  end
+
   defp encode_type({:tuple, types}, [data|rest]) do
     # all head items are 32 bytes in length and there will be exactly
     # `count(types)` of them, so the tail starts at `32 * count(types)`.
