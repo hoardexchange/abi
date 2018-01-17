@@ -158,6 +158,14 @@ defmodule ABI.FunctionSelector do
     ABI.Parser.parse!(single_type, as: :type)
   end
 
+  def decode_single_type("bool"), do: :bool
+  def decode_single_type("string"), do: :string
+  def decode_single_type("address"), do: :address
+  def decode_single_type("bytes32"), do: :bytes32
+  def decode_single_type(els) do
+    raise "Unsupported type: #{els}"
+  end
+
   @doc """
   Encodes a function call signature.
 
@@ -201,6 +209,7 @@ defmodule ABI.FunctionSelector do
 
   defp get_type(:bytes), do: "bytes"
   defp get_type(:string), do: "string"
+  defp get_type(:bytes32), do: "bytes32"
   defp get_type({:array, type}), do: "#{get_type(type)}[]"
 
   defp get_type({:tuple, types}) do

@@ -175,6 +175,9 @@ defmodule ABI.TypeEncoder do
   defp encode_type({:bytes, size}, [data|_]) do
     raise "wrong datatype for bytes#{size}: #{inspect(data)}"
   end
+  defp encode_type(:bytes32, [data|rest]) do
+    {encode_bytes(data), rest}
+  end
 
   defp encode_type({:tuple, types}, [data|rest]) do
     # all head items are 32 bytes in length and there will be exactly
