@@ -1,10 +1,9 @@
 Terminals '(' ')' '[' ']' ',' '->' typename letters digits 'expecting selector' 'expecting type'.
-Nonterminals dispatch selector nontrivial_selector comma_delimited_types type_with_subscripts array_subscripts tuple array_subscript identifier  identifier_parts identifier_part type typespec.
+Nonterminals dispatch selector nontrivial_selector comma_delimited_types type_with_subscripts array_subscripts array_subscript identifier  identifier_parts identifier_part type typespec.
 Rootsymbol dispatch.
 
 dispatch -> 'expecting type' type_with_subscripts : {type, '$2'}.
 dispatch -> 'expecting selector' selector : {selector, '$2'}.
-dispatch -> tuple : {selector, #{function => nil, types => ['$1'], returns => nil}}.
 dispatch -> nontrivial_selector : {selector, '$1'}.
 
 selector -> typespec : #{function => nil, types => '$1', returns => nil}.
@@ -16,9 +15,6 @@ nontrivial_selector -> identifier typespec '->' type : #{function => '$1', types
 
 typespec -> '(' ')' : [].
 typespec -> '(' comma_delimited_types ')' : '$2'.
-
-tuple -> '(' ')' : {tuple, []}.
-tuple -> '(' comma_delimited_types ')' : {tuple, '$2'}.
 
 comma_delimited_types -> type_with_subscripts : ['$1'].
 comma_delimited_types -> type_with_subscripts ',' comma_delimited_types : ['$1' | '$3'].
@@ -47,7 +43,6 @@ type -> typename digits :
   juxt_type(list_to_atom(v('$1')), list_to_integer(v('$2'))).
 type -> typename digits letters digits :
   double_juxt_type(list_to_atom(v('$1')), v('$3'), list_to_integer(v('$2')), list_to_integer(v('$4'))).
-type -> tuple : '$1'.
 
 
 Erlang code.

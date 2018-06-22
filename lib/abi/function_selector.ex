@@ -77,14 +77,6 @@ defmodule ABI.FunctionSelector do
           {:array, {:uint, 256}}
         ]
       }
-
-      iex> ABI.FunctionSelector.decode("shake((string))")
-      %ABI.FunctionSelector{
-        function: "shake",
-        types: [
-          {:tuple, [:string]}
-        ]
-      }
   """
   def decode(signature) do
     ABI.Parser.parse!(signature, as: :selector)
@@ -142,9 +134,6 @@ defmodule ABI.FunctionSelector do
       iex> ABI.FunctionSelector.decode_type("uint256")
       {:uint, 256}
 
-      iex> ABI.FunctionSelector.decode_type("(bool,address)")
-      {:tuple, [:bool, :address]}
-
       iex> ABI.FunctionSelector.decode_type("address[][3]")
       {:array, {:array, :address}, 3}
   """
@@ -164,10 +153,10 @@ defmodule ABI.FunctionSelector do
       ...>     :bool,
       ...>     {:array, :string},
       ...>     {:array, :string, 3},
-      ...>     {:tuple, [{:uint, 256}, :bool]}
+      ...>     :bytes
       ...>   ]
       ...> })
-      "bark(uint256,bool,string[],string[3],(uint256,bool))"
+      "bark(uint256,bool,string[],string[3],bytes)"
   """
   def encode(function_selector) do
     types = get_types(function_selector) |> Enum.join(",")
@@ -187,13 +176,6 @@ defmodule ABI.FunctionSelector do
   defp get_type(:address), do: "address"
   defp get_type({:array, type}), do: "#{get_type(type)}[]"
   defp get_type({:array, type, element_count}), do: "#{get_type(type)}[#{element_count}]"
-  defp get_type({:tuple, types}) do
-    encoded_types = types
-    |> Enum.map(&get_type/1)
-    |> Enum.join(",")
-
-    "(#{encoded_types})"
-  end
   defp get_type(els), do: "Unsupported type: #{inspect els}"
 
   @doc false
@@ -202,7 +184,6 @@ defmodule ABI.FunctionSelector do
   def is_dynamic?(:string), do: true
   def is_dynamic?({:array, _type}), do: true
   def is_dynamic?({:array, _type, _length}), do: true
-  def is_dynamic?({:tuple, _types}), do: true
   def is_dynamic?(_), do: false
 
 end

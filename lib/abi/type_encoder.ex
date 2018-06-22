@@ -102,22 +102,6 @@ defmodule ABI.TypeEncoder do
     encode_raw(data, function_selector.types)
   end
 
-  @doc """
-  Simiar to `ABI.TypeEncoder.encode/2` except we accept
-  an array of types instead of a function selector. We also
-  do not pre-pend the method id.
-
-  ## Examples
-
-      iex> [{"awesome", true}]
-      ...> |> ABI.TypeEncoder.encode_raw([{:tuple, [:string, :bool]}])
-      ...> |> Base.encode16(case: :lower)
-      "000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000007617765736f6d6500000000000000000000000000000000000000000000000000"
-  """
-  def encode_raw(data, types) do
-    do_encode(types, data, [])
-  end
-
   @spec encode_method_id(%ABI.FunctionSelector{}) :: binary()
   defp encode_method_id(%ABI.FunctionSelector{function: nil}), do: ""
   defp encode_method_id(function_selector) do
@@ -133,12 +117,35 @@ defmodule ABI.TypeEncoder do
     init
   end
 
-  @spec do_encode([ABI.FunctionSelector.type], [any()], [binary()]) :: binary()
-  defp do_encode([], _, acc), do: :erlang.iolist_to_binary(Enum.reverse(acc))
-  defp do_encode([type|remaining_types], data, acc) do
-    {encoded, remaining_data} = encode_type(type, data)
+  @doc """
+  Simiar to `ABI.TypeEncoder.encode/2` except we accept
+  an array of types instead of a function selector. We also
+  do not pre-pend the method id.
 
-    do_encode(remaining_types, remaining_data, [encoded | acc])
+  ## Examples
+
+  """
+  def encode_raw(data, types) do
+    # all head items are 32 bytes in length and there will be exactly
+    # `count(types)` of them, so the tail starts at `32 * count(types)`.
+    tail_start = (types |> Enum.count) * 32
+
+    {head, tail, [], _} = Enum.reduce(
+      types,
+      {<<>>, <<>>, data, tail_start},
+      fn type, {head, tail, data, tail_position} ->
+        {el, rest} = encode_type(type, data)
+
+        if ABI.FunctionSelector.is_dynamic?(type) do
+          # If we're a dynamic type, just encoded the length to head and the element to body
+          {head <> encode_uint(tail_position, 256), tail <> el, rest, tail_position + byte_size(el)}
+        else
+          # If we're a static type, simply encode the el to the head
+          {head <> el, tail, rest, tail_position}
+        end
+      end)
+
+    head <> tail
   end
 
   @spec encode_type(ABI.FunctionSelector.type, [any()]) :: {binary(), [any()]}
@@ -174,26 +181,6 @@ defmodule ABI.TypeEncoder do
   end
   defp encode_type({:bytes, size}, [data|_]) do
     raise "wrong datatype for bytes#{size}: #{inspect(data)}"
-  end
-
-  defp encode_type({:tuple, types}, [data|rest]) do
-    # all head items are 32 bytes in length and there will be exactly
-    # `count(types)` of them, so the tail starts at `32 * count(types)`.
-    tail_start = ( types |> Enum.count ) * 32
-
-    {head, tail, [], _} = Enum.reduce(types, {<<>>, <<>>, data |> Tuple.to_list, tail_start}, fn type, {head, tail, data, tail_position} ->
-      {el, rest} = encode_type(type, data)
-
-      if ABI.FunctionSelector.is_dynamic?(type) do
-        # If we're a dynamic type, just encoded the length to head and the element to body
-        {head <> encode_uint(tail_position, 256), tail <> el, rest, tail_position + byte_size(el)}
-      else
-        # If we're a static type, simply encode the el to the head
-        {head <> el, tail, rest, tail_position}
-      end
-    end)
-
-    {head <> tail, rest}
   end
 
   defp encode_type({:array, type, element_count}, [data | rest]) do
