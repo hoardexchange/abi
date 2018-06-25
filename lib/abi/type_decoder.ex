@@ -193,6 +193,10 @@ defmodule ABI.TypeDecoder do
     decode_bytes(data, size, :right)
   end
 
+  defp decode_type(:bytes32, data) do
+    decode_bytes(data, 32, :right)
+  end
+
   defp decode_type({:array, type}, data) do
     {element_count, rest} = decode_uint(data, 256)
     decode_type({:array, type, element_count}, rest)
