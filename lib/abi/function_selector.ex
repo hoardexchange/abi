@@ -8,7 +8,13 @@ defmodule ABI.FunctionSelector do
 
   @type type ::
     {:uint, integer()} |
-    :bool
+    :bool |
+    :bytes |
+    :string |
+    :address |
+    {:array, type} |
+    {:array, type, non_neg_integer} |
+    {:tuple, [type]}
 
   @type t :: %__MODULE__{
     function: String.t,
@@ -152,6 +158,14 @@ defmodule ABI.FunctionSelector do
     ABI.Parser.parse!(single_type, as: :type)
   end
 
+  def decode_single_type("bool"), do: :bool
+  def decode_single_type("string"), do: :string
+  def decode_single_type("address"), do: :address
+  def decode_single_type("bytes32"), do: :bytes32
+  def decode_single_type(els) do
+    raise "Unsupported type: #{els}"
+  end
+
   @doc """
   Encodes a function call signature.
 
@@ -181,30 +195,37 @@ defmodule ABI.FunctionSelector do
     end
   end
 
+  defp get_type(nil), do: nil
+  defp get_type({:int, size}), do: "int#{size}"
   defp get_type({:uint, size}), do: "uint#{size}"
-  defp get_type(:bool), do: "bool"
-  defp get_type(:string), do: "string"
   defp get_type(:address), do: "address"
+  defp get_type(:bool), do: "bool"
+  defp get_type({:fixed, element_count, precision}), do: "fixed#{element_count}x#{precision}"
+  defp get_type({:ufixed, element_count, precision}), do: "ufixed#{element_count}x#{precision}"
+  defp get_type({:bytes, size}), do: "bytes#{size}"
+  defp get_type(:function), do: "function"
+
+  defp get_type({:array, type, element_count}), do: "#{get_type(type)}[#{element_count}]"
+
   defp get_type(:bytes), do: "bytes"
+  defp get_type(:string), do: "string"
   defp get_type(:bytes32), do: "bytes32"
   defp get_type({:array, type}), do: "#{get_type(type)}[]"
-  defp get_type({:array, type, element_count}), do: "#{get_type(type)}[#{element_count}]"
-  defp get_type({:tuple, types}) do
-    encoded_types = types
-    |> Enum.map(&get_type/1)
-    |> Enum.join(",")
 
-    "(#{encoded_types})"
+  defp get_type({:tuple, types}) do
+    encoded_types = Enum.map(types, &get_type/1)
+    "(#{Enum.join(encoded_types, ",")})"
   end
-  defp get_type(els), do: "Unsupported type: #{inspect els}"
+
+  defp get_type(els), do: raise "Unsupported type: #{inspect els}"
 
   @doc false
   @spec is_dynamic?(ABI.FunctionSelector.type) :: boolean
   def is_dynamic?(:bytes), do: true
   def is_dynamic?(:string), do: true
   def is_dynamic?({:array, _type}), do: true
-  def is_dynamic?({:array, _type, _length}), do: true
-  def is_dynamic?({:tuple, _types}), do: true
+  def is_dynamic?({:array, type, len}) when len > 0, do: is_dynamic?(type)
+  def is_dynamic?({:tuple, types}), do: Enum.any?(types, &is_dynamic?/1)
   def is_dynamic?(_), do: false
 
 end
