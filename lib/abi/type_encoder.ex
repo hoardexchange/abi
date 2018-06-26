@@ -135,24 +135,24 @@ defmodule ABI.TypeEncoder do
   end
 
   defp encode_head_and_data(data, types) do
-    tail_start = (types |> Enum.count) * 32
+    body_start = Enum.count(types) * 32
 
-    {head, tail, [], _} =
+    {head, body, [], _} =
       Enum.reduce(
       types,
-      {<<>>, <<>>, data, tail_start},
-      fn type, {head, tail, data, tail_position} ->
-        {el, rest} = encode_type(type, data)
+      {<<>>, <<>>, data, body_start},
+      fn type, {head, body, data, body_position} ->
+        {encoded, rest} = encode_type(type, data)
 
         if ABI.FunctionSelector.is_dynamic?(type) do
           # If we're a dynamic type, just encoded the length to head and the element to body
-          {head <> encode_uint(tail_position, 256), tail <> el, rest, tail_position + byte_size(el)}
+          {head <> encode_uint(body_position, 256), body <> encoded, rest, body_position + byte_size(encoded)}
         else
           # If we're a static type, simply encode the el to the head
-          {head <> el, tail, rest, tail_position}
+          {head <> encoded, body, rest, body_position}
         end
       end)
-    head <> tail
+    head <> body
   end
 
   @spec encode_method_id(%ABI.FunctionSelector{}) :: binary()
